@@ -5,16 +5,13 @@ import rhino3dm from 'https://cdn.jsdelivr.net/npm/rhino3dm@0.15.0-beta/rhino3dm
 import { RhinoCompute } from 'https://cdn.jsdelivr.net/npm/compute-rhino3d@0.13.0-beta/compute.rhino3d.module.js'
 import { Rhino3dmLoader } from 'https://cdn.jsdelivr.net/npm/three@0.124.0/examples/jsm/loaders/3DMLoader.js'
 
-const definitionName = 'rnd_node.gh'
+const definitionName = 'color_test.gh'
 
 // Set up sliders
-const radius_slider = document.getElementById('radius')
-radius_slider.addEventListener('mouseup', onSliderChange, false)
-radius_slider.addEventListener('touchend', onSliderChange, false)
+const sub_slider = document.getElementById('sub')
+sub_slider.addEventListener('mouseup', onSliderChange, false)
+sub_slider.addEventListener('touchend', onSliderChange, false)
 
-const count_slider = document.getElementById('count')
-count_slider.addEventListener('mouseup', onSliderChange, false)
-count_slider.addEventListener('touchend', onSliderChange, false)
 
 const loader = new Rhino3dmLoader()
 loader.setLibraryPath('https://cdn.jsdelivr.net/npm/rhino3dm@0.15.0-beta/')
@@ -24,10 +21,10 @@ rhino3dm().then(async m => {
     console.log('Loaded rhino3dm.')
     rhino = m // global
 
-
     //RhinoCompute.url = getAuth( 'RHINO_COMPUTE_URL' ) // RhinoCompute server url. Use http://localhost:8081 if debugging locally.
     //RhinoCompute.apiKey = getAuth( 'RHINO_COMPUTE_KEY' )  // RhinoCompute server api key. Leave blank if debugging locally.
-    
+
+
     RhinoCompute.url = 'http://localhost:8081/' //if debugging locally.
 
 
@@ -45,21 +42,22 @@ rhino3dm().then(async m => {
 async function compute() {
 
 
-    const param1 = new RhinoCompute.Grasshopper.DataTree('Radius')
-    param1.append([0], [radius_slider.valueAsNumber])
+    //No params needed for these example
+    ////////////////////////////////////
+    // const param1 = new RhinoCompute.Grasshopper.DataTree('subdivision')
+    // console.log(sub_slider.valueAsNumber)
+    // param1.append([0], [sub_slider.valueAsNumber])
 
-    const param2 = new RhinoCompute.Grasshopper.DataTree('Count')
-    param2.append([0], [count_slider.valueAsNumber])
 
-    // clear values
+    // // clear values
     const trees = []
-    trees.push(param1)
-    trees.push(param2)
+
+
+
 
     const res = await RhinoCompute.Grasshopper.evaluateDefinition(definition, trees)
-    console.log(res)
-        
 
+   // console.log(res)
 
     doc = new rhino.File3dm()
 
@@ -73,7 +71,20 @@ async function compute() {
 
                 const data = JSON.parse(d.data)
                 const rhinoObject = rhino.CommonObject.decode(data)
-                doc.objects().add(rhinoObject, null)
+                
+                const oa_curves = new rhino.ObjectAttributes()
+                oa_curves.layerIndex = 2
+                //oa_curves.setUserString("Color", "Red") 
+                console.log(oa_curves)
+                const col = {
+                    a: 255,
+                    b: 20,
+                    g: 20,
+                    r: 26,
+                }
+                
+                oa_curves.plotColor = col
+                doc.objects().add(rhinoObject, oa_curves)
 
             }
         }
@@ -84,12 +95,25 @@ async function compute() {
     scene.traverse(child => {
         if (!child.isLight) {
             scene.remove(child)
+
         }
     })
 
 
     const buffer = new Uint8Array(doc.toByteArray()).buffer
     loader.parse(buffer, function (object) {
+
+        // clear objects from scene
+        object.traverse(child => {
+            if (child.hasOwnProperty('Color')){
+                //console.log(typeof child)
+                //console.log(child.geometry().getUserStrings())
+                console.log(2)
+
+            }
+        })
+
+
 
         scene.add(object)
         // hide spinner
@@ -100,14 +124,16 @@ async function compute() {
 
 
 function onSliderChange() {
-    // show spinner
+    //show spinner
     document.getElementById('loader').style.display = 'block'
     compute()
 }
 
 
 
+
 // BOILERPLATE //
+
 let scene, camera, renderer, controls
 
 function init() {
